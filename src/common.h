@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <assert.h>
+#include <ctype.h>
 #include "color.h"
 
 #ifdef DEBUG
@@ -15,8 +16,11 @@
 )
 #endif //DEBUG
 
+#define ESC 0x1B
 #define KB 1024
 #define MAXSIZE (4 * KB)
-#define ESC 0x1B
+
+#define u_int64_t u64
+#define u_int32_t u32
 
 #endif //COMMON_H

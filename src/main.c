@@ -1,11 +1,13 @@
 #include "common.h"
+#include "lexer.h"
 
 typedef struct {
     char *name;
     size_t size;
 } file_t;
 
-static FILE * program_create_generic_template_file(void)
+
+static FILE * create_generic_template_file(void)
 {
     FILE *tmp = fopen("tmp.c", "w");
 
@@ -25,7 +27,17 @@ static FILE * program_create_generic_template_file(void)
     return tmp;
 }
 
-size_t file_get_size(char *file_path)
+bool write_buffer_to_file(char *buffer, int size)
+{
+    FILE *tmp = create_generic_template_file();
+    if (tmp == NULL) return false;
+    fwrite(buffer, size, 1, tmp); // Ignores the null character at the end
+    fputs("\n}\0", tmp);
+    fclose(tmp);
+    return true;
+}
+
+int file_get_size(char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
@@ -33,12 +45,12 @@ size_t file_get_size(char *file_path)
         return -1;
     }
     fseek(fp, 0L, SEEK_END);
-    size_t file_size = ftell(fp);
+    int file_size = ftell(fp);
     fclose(fp);
     return file_size;
 }
 
-static void file_print_to_stdout(char *name, size_t size)
+static void file_print_to_stdout(char *name, int size)
 {
     char buffer[MAXSIZE] = {0};
     FILE *fp = fopen(name, "r");
@@ -53,37 +65,14 @@ static void file_print_to_stdout(char *name, size_t size)
     fclose(fp);
 }
 
-bool program_write_user_input_to_file(char *buffer, size_t size)
-{
-    FILE *tmp = program_create_generic_template_file();
-    if (tmp == NULL) return false;
-    fwrite(buffer, size, 1, tmp); // Ignores the null character at the end
-    fputs("\n}\0", tmp);
-    fclose(tmp);
-    return true;
-}
-
-typedef struct {
-    char content[MAXSIZE];
-    size_t content_size;
-    size_t cursor; // keeps track of last stdin char entry before null char
-} interpreter_t;
-
-static inline size_t program_inc_content(interpreter_t *program)
-{
-    program->cursor = program->content_size;
-    program->content_size++;
-    return (program->cursor);
-}
-
-static inline void program_read_stdin(interpreter_t *program)
+static inline void read_stdin_to_buffer(lexer_t *program)
 {
     char chr;
-    while ((chr = getchar()) != '\n') program->content[program_inc_content(program)] = chr;
-    program->content[program_inc_content(program)] = '\n'; //sets a space after every line
+    while ((chr = getchar()) != '\n') program->content[lexer_inc_content_size(program)] = chr;
+    program->content[lexer_inc_content_size(program)] = '\n'; //sets a space after every line
 }
 
-static inline bool program_check_user_pressed_esc(interpreter_t *program)
+static inline bool check_user_pressed_esc(lexer_t *program)
 {
     if (program->content[--program->cursor] == 0x1B) {
         program->content[--program->content_size] = '\0';
@@ -93,7 +82,7 @@ static inline bool program_check_user_pressed_esc(interpreter_t *program)
     return false;
 }
 
-static size_t run_command_on_linux(char *command)
+static int run_command_on_linux(char *command)
 {
 #ifdef DEBUG
     printf(DBG"CMD: %s\n", command);
@@ -108,9 +97,9 @@ static size_t run_command_on_linux(char *command)
     while (fscanf(fp, "%s", buffer) != EOF) printf("%s ", buffer); 
 
     // Exit status of gcc
-    size_t exit_status =  WEXITSTATUS(pclose(fp));
+    int exit_status =  WEXITSTATUS(pclose(fp));
 #ifdef DEBUG
-    printf(DBG"Exit code: %li\n", exit_status);
+    printf(DBG"Exit code: %i\n", exit_status);
 #endif //DEBUG
     return exit_status;
 }
@@ -149,8 +138,32 @@ static bool file_init(file_t *file, char *name)
     return true;
 }
 
+#define ARRAY_SIZE(arr) ((sizeof(arr))/(sizeof(*arr)))
 
-int main(int argc, char *argv[])
+int main(void)
+{
+   char *test[] = {
+                "3+4",
+                "4+3",
+                "4-3",
+                " 4 - 3 "
+   }; 
+
+   int i = 0;
+   int num = ARRAY_SIZE(test);
+   while (i < num) {
+       printf("expr: %s\n", test[i]);
+       lexer_t lexer = lexer_init(test[i], strlen(test[i]) + 1);
+       int result = lexer_evaluate_expression(&lexer);
+       printf("%s = %i\n", test[i], result);
+       i++;
+   }
+
+   return 0;
+
+}
+
+int oldmain(int argc, char *argv[])
 {
     char *c_file_path = NULL;
     file_t program_file = {0};
@@ -182,26 +195,31 @@ int main(int argc, char *argv[])
     // Interperter 
     // ======================================================
     
-    interpreter_t program = {0};
-    while (true)
+    lexer_t program = {0};
+    char buffer[MAXSIZE];
+    program.content = buffer; 
+    while (!program.stop)
     {
-        printf(CCHECK); //prints ccheck in a colored prompt
-        program_read_stdin(&program);
-        if (program_check_user_pressed_esc(&program)) break;
-    }
-    assert(program_write_user_input_to_file(program.content, program.cursor));
+        while (true)
+        {
+            printf(CCHECK); //prints ccheck in a colored prompt
+            read_stdin_to_buffer(&program);
+            if (check_user_pressed_esc(&program)) break;
+        }
+        assert(write_buffer_to_file(program.content, program.cursor));
 
 #ifdef DEBUG
-    file_print_to_stdout("tmp.c", file_get_size("tmp.c"));
+        file_print_to_stdout("tmp.c", file_get_size("tmp.c"));
 #endif //DEBUG
 
-
-    if (!gcc_compile_program(NULL)) {
-        fprintf(stderr, ERROR"COMPILATION FAILED\n");
-        exit(1);
-    } else {
-        gcc_run_compiled_binary();
+        if (!gcc_compile_program(NULL)) {
+            fprintf(stderr, ERROR"COMPILATION FAILED\n");
+            exit(1);
+        } else {
+            gcc_run_compiled_binary();
+        }
     }
+
     goto cleanup;
 
 cleanup:
