@@ -7,6 +7,10 @@
 #include "color.h"
 /*#include "../lib/my_debug.h"*/
 
+#define MAXINT      (sizeof(int))
+#define MAXFLOAT    (sizeof(float))
+#define MAXDOUBLE   (sizeof(double))
+
 typedef union TokenValue TokenValue;
 union TokenValue {
     // value
@@ -41,9 +45,17 @@ struct token_t {
     TokenValue value;
 };
 
-#define token_free(tokenptr) free(token);
-token_t * new_token(TokenType type, TokenValue *pval);
-void token_print(token_t *token);
+static inline bool token_is_integer(token_t *token) { return (token->type == TT_INT) ? true : false; }
+static inline bool token_is_float(token_t *token) { return (token->type == TT_FLOAT) ? true : false; }
+static inline bool token_is_double(token_t *token) { return (token->type == TT_DOUBLE) ? true : false; }
+
+#define token_free(tokenptr) (free(token))
+token_t *   new_token(TokenType type, TokenValue *pval);
+void        token_print(token_t *token);
+token_t     token_calculate(token_t *left, token_t *right, token_t *op);
+bool        token_set_value(token_t *token, TokenValue value);
+bool        token_add_token_of_same_type(token_t *, token_t *);
+bool        token_is_operator(token_t *token);
 
 
 #endif // TOKEN_H

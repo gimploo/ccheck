@@ -9,12 +9,16 @@
 #include <ctype.h>
 #include "color.h"
 
-#ifdef DEBUG
+#define panic(...) {\
+    fprintf(stderr, DBG"%s:" __VA_ARGS__ , __func__);\
+    exit(1);\
+}
+
 #define IMPL (\
         fprintf(stderr,"TODO : %s left to implement\n",__func__);\
         exit(0);\
 )
-#endif //DEBUG
+
 
 #define ESC 0x1B
 #define KB 1024

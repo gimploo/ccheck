@@ -142,22 +142,37 @@ static bool file_init(file_t *file, char *name)
 
 int main(void)
 {
+
+
+    char *test = " 14 + 2 * 3 - 6 / 2";
+    int size = strlen(test)+1;
+    token_t tk_list[size];
+
+    lexer_t lexer = lexer_init(test, size);
+    for (int i = 0; i < size; i++)
+    {
+        tk_list[i] = *lexer_get_next_token(&lexer);
+    }
+    for (int i = 0; i < size; i++) token_print(&tk_list[i]);
+
+    /*
    char *test[] = {
-                "3+4",
-                "4+3",
-                "4-3",
-                " 4 - 3 "
+                "7 * 4 / 2",
+                "7 * 4 / 2 * 3",
+                "10 * 4  * 2 * 3 / 8"
    }; 
 
    int i = 0;
-   int num = ARRAY_SIZE(test);
-   while (i < num) {
+   int total_tests = ARRAY_SIZE(test);
+   
+   while (i < total_tests) {
        printf("expr: %s\n", test[i]);
        lexer_t lexer = lexer_init(test[i], strlen(test[i]) + 1);
-       int result = lexer_evaluate_expression(&lexer);
-       printf("%s = %i\n", test[i], result);
+       token_t result = lexer_evaluate_expression(&lexer);
+       printf("%s = %i\n", test[i], result.value.ival);
        i++;
    }
+   */
 
    return 0;
 

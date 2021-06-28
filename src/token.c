@@ -1,4 +1,4 @@
-#didfinclude "token.h"
+#include "token.h"
 #include <assert.h>
 
 // creates a token 
@@ -89,7 +89,78 @@ void token_print(token_t *token)
             printf("TOKEN(TT_MODULO)\n");
             break;
         default:
-            fprintf(stderr, ERROR"%s: unkown type\n", __func__);
+            fprintf(stderr, DBG"%s: unkown type\n", __func__);
             break;
     }
+}
+
+token_t token_calculate(token_t *left, token_t *right, token_t *op)
+{
+    if (left == NULL || right == NULL || op == NULL) {
+        fprintf(stderr, DBG"%s: null arguments\n", __func__);
+        exit(1);
+    }
+    token_t result = {0};
+    switch(op->type)
+    {
+        case TT_PLUS:
+            result.value.ival = left->value.ival + right->value.ival;
+            break;
+        case TT_MINUS:
+            result.value.ival = left->value.ival - right->value.ival;
+            break;
+        case TT_MODULO:
+            result.value.ival = left->value.ival % right->value.ival;
+            break;
+        case TT_MULT:
+            result.value.ival = left->value.ival * right->value.ival;
+            break;
+        case TT_DIV:
+            result.value.ival = left->value.ival / right->value.ival;
+            break;
+        default:
+            fprintf(stderr, DBG"%s: operator not accounted\n", __func__);
+            break;
+    }
+    result.type = left->type;
+    return result;
+}
+
+
+bool token_set_value(token_t *token, TokenValue value)
+{
+    switch(token->type)
+    {
+        case TT_CHAR:
+            token->value.cval = value.cval;
+            break;
+        case TT_BOOL:
+            token->value.bval = value.bval;
+            break;
+        case TT_INT:
+            token->value.ival = value.ival;
+            break;
+        case TT_DOUBLE:
+            token->value.dval = value.dval;
+            break;
+        case TT_FLOAT:
+            token->value.fval = value.fval;
+            break;
+        default:
+            fprintf(stderr, DBG"%s: token type not accounted for\n", __func__);
+            exit(1);
+            break;
+    }
+    return true;
+}
+
+bool token_is_operator(token_t *token)
+{
+    return (
+            token->type == TT_PLUS || 
+            token->type == TT_MINUS || 
+            token->type == TT_DIV || 
+            token->type == TT_MODULO || 
+            token->type == TT_MULT
+            ) ? true : false;
 }
